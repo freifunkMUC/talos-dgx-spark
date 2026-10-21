@@ -45,20 +45,13 @@ to load the NVIDIA modules.
 └── .github/workflows/talos-image.yml  # validate on PR, build + push installer on main
 ```
 
-## Obsolete: ASUS overlay (to be removed)
+## History
 
-The original approach in `talos/asus-ascent-gx10-overlay/`, `talos/scripts/ci_*.py`,
-`talos/scripts/extract_*.sh`, `talos/scripts/build_overlay.sh`, `talos/config/overlay.yaml`,
-`docs/`, `dockerfiles/` and `scripts/` cannot work and is no longer used:
-
-- it copies Ubuntu `6.11.0-1016-nvidia` kernel modules into a Talos image; Talos
-  runs its own kernel (6.18) with `module.sig_enforce=1`, so they never load;
-- Talos overlay installers write to the boot partition at install time, not to the
-  read-only rootfs, and are meant for SBC firmware/DTBs, not drivers;
-- it depends on a private copy of the ASUS DGX OS apt repository (GCS bucket) and
-  redistributes NVIDIA/linux-firmware blobs that the MIT license does not cover.
-
-These paths are kept only until the removal commit; Git history retains them.
+Forked from [microscaler/talos-dgx-spark](https://github.com/microscaler/talos-dgx-spark), which built a Talos
+overlay from Ubuntu `6.11.0-1016-nvidia` kernel modules and firmware out of the ASUS DGX OS repository. That
+cannot work (Talos runs its own kernel with `module.sig_enforce=1`; overlays only write to the boot partition)
+and is no longer needed, since Talos supports GB10 natively from v1.12 on with the official Sidero Labs
+extensions. The overlay was removed; Git history still has it.
 
 ## License
 
