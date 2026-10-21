@@ -1,0 +1,43 @@
+# Machine config patch for DGX Spark / GB10 nodes (Talos >= 1.14).
+#
+# Loads the NVIDIA kernel modules shipped by the nonfree-kmod-nvidia-production
+# system extension (see versions.env / schematic.yaml). KernelModuleConfig
+# replaces the deprecated .machine.kernel.modules since Talos 1.14.
+#
+# Requires the kernel argument arm64.nobti, which is baked into the image
+# (EXTRA_KERNEL_ARGS / schematic customization.extraKernelArgs). Loading the
+# modules without it crash-loops the node (siderolabs/talos#13019); recover by
+# booting the previous entry and removing this patch.
+#
+# Usage: talosctl gen config ... --config-patch @talos/config/gb10-machine-patch.yaml
+#    or: talosctl patch mc --patch @talos/config/gb10-machine-patch.yaml
+apiVersion: v1alpha1
+kind: KernelModuleConfig
+name: nvidia
+# GB10 has no dedicated framebuffer; GPU memory is coherent system memory
+# over NVLink-C2C. Used in the siderolabs/contrib GB10 example; uncomment if
+# CUDA reports no usable memory.
+# parameters:
+#   - NVreg_CoherentGPUMemoryMode=driver
+---
+apiVersion: v1alpha1
+kind: KernelModuleConfig
+name: nvidia_uvm
+---
+apiVersion: v1alpha1
+kind: KernelModuleConfig
+name: nvidia_drm
+---
+apiVersion: v1alpha1
+kind: KernelModuleConfig
+name: nvidia_modeset
+# RoCE/RDMA over the ConnectX-7 QSFP ports (NCCL between two Sparks).
+# mlx5_core/mlx5_ib are in the base kernel; add these only if you need RDMA.
+# ---
+# apiVersion: v1alpha1
+# kind: KernelModuleConfig
+# name: rdma_ucm
+# ---
+# apiVersion: v1alpha1
+# kind: KernelModuleConfig
+# name: ib_umad

@@ -1,0 +1,21 @@
+# Talos Image Factory schematic for DGX Spark / GB10 (arm64).
+#
+# The Image Factory picks the extension versions that match the requested
+# Talos version, and signs SecureBoot assets. Keep in sync with versions.env.
+#
+#   curl -sSf -X POST --data-binary @talos/config/schematic.yaml https://factory.talos.dev/schematics
+#   -> {"id":"<schematic-id>"}
+#   ISO:       https://factory.talos.dev/image/<schematic-id>/v1.14.4/metal-arm64.iso
+#   SB ISO:    https://factory.talos.dev/image/<schematic-id>/v1.14.4/metal-arm64-secureboot.iso
+#   Installer: factory.talos.dev/metal-installer/<schematic-id>:v1.14.4
+#              (SecureBoot: factory.talos.dev/metal-installer-secureboot/<schematic-id>:v1.14.4)
+customization:
+  extraKernelArgs:
+    # Required for the NVIDIA kernel modules on GB10 (siderolabs/talos#13019).
+    - arm64.nobti
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/nonfree-kmod-nvidia-production
+      - siderolabs/nvidia-container-toolkit-production
+      - siderolabs/realtek-firmware
+      - siderolabs/mellanox-mstflint
