@@ -23,6 +23,9 @@ Two ways to get boot media, see [talos/README.md](talos/README.md):
 1. **Image Factory** (recommended, SecureBoot-signed): upload
    [talos/config/schematic.yaml](talos/config/schematic.yaml), download the
    arm64 ISO, install with `factory.talos.dev/metal-installer/<id>:v1.14.4`.
+   Schematic ID for the current `schematic.yaml` (v1.14.4): `e834f40f79287c3b0dd134195d577f861f88ba7dbbf60f0dd642dfefe9e2fb7c`;
+   ISO `https://factory.talos.dev/image/e834f40f79287c3b0dd134195d577f861f88ba7dbbf60f0dd642dfefe9e2fb7c/v1.14.4/metal-arm64-secureboot.iso`
+   (without SecureBoot: `metal-arm64.iso`). The ID changes whenever `schematic.yaml` changes.
 2. **Local/CI build** with the pinned imager:
    `./talos/scripts/build_image.sh installer iso`.
 
