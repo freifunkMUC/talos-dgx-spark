@@ -1,0 +1,135 @@
+name: Build Talos Image
+
+# Validates the GB10 config on every PR, builds the arm64 installer + ISO
+# with the official Talos imager (versions from talos/config/versions.env)
+# on main and on demand, and pushes the installer to GHCR.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'talos/**'
+      - '.github/workflows/talos-image.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'talos/**'
+      - '.github/workflows/talos-image.yml'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Attach the ISO to a GitHub release talos-<version>'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Shellcheck
+        run: shellcheck -x talos/scripts/*.sh
+
+      - name: Install talosctl
+        run: |
+          source talos/config/versions.env
+          curl -fsSLo talosctl "https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-linux-amd64"
+          echo "${TALOSCTL_LINUX_AMD64_SHA256}  talosctl" | sha256sum -c -
+          sudo install -m 0755 talosctl /usr/local/bin/talosctl
+          rm talosctl
+
+      - name: Validate machine config patch
+        run: |
+          source talos/config/versions.env
+          work="$(mktemp -d)"
+          talosctl gen config gb10 https://192.0.2.1:6443 \
+            --talos-version "${TALOS_VERSION%.*}" \
+            --install-image "${INSTALLER_BASE_IMAGE}" \
+            --config-patch @talos/config/gb10-machine-patch.yaml \
+            --with-docs=false --with-examples=false \
+            -o "${work}"
+          talosctl validate --config "${work}/worker.yaml" --mode metal --strict
+          test "$(grep -c '^kind: KernelModuleConfig' "${work}/worker.yaml")" -eq 4
+          rm -rf "${work}"
+
+      - name: Check schematic extensions against the Image Factory
+        run: |
+          source talos/config/versions.env
+          official="$(curl -fsSL "https://factory.talos.dev/version/${TALOS_VERSION}/extensions/official" | jq -r '.[].name')"
+          sed -n 's/^ *- \(siderolabs\/[a-z0-9-]*\)$/\1/p' talos/config/schematic.yaml | while read -r ext; do
+            grep -qx "${ext}" <<<"${official}" || { echo "missing for ${TALOS_VERSION}: ${ext}"; exit 1; }
+            echo "ok: ${ext}"
+          done
+
+  build:
+    name: Build installer and ISO
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # release (workflow_dispatch with release=true)
+      packages: write  # push installer to GHCR
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read versions
+        id: versions
+        run: |
+          source talos/config/versions.env
+          echo "talos=${TALOS_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "installer=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/installer-dgx-spark:${TALOS_VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build installer and ISO
+        run: ./talos/scripts/build_image.sh installer iso
+
+      - name: Set up crane
+        uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
+        with:
+          version: v0.22.1
+
+      - name: Push installer to GHCR
+        env:
+          INSTALLER: ${{ steps.versions.outputs.installer }}
+        run: |
+          crane push talos/output/installer-arm64.tar "${INSTALLER}"
+          echo "Installer: ${INSTALLER}@$(crane digest "${INSTALLER}")" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: talos-${{ steps.versions.outputs.talos }}-metal-arm64-iso
+          path: talos/output/metal-arm64.iso
+          retention-days: 7
+          compression-level: 0
+
+      - name: Attach ISO to GitHub release
+        if: github.event_name == 'workflow_dispatch' && inputs.release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: talos/output/metal-arm64.iso
+          tag_name: talos-${{ steps.versions.outputs.talos }}
+          name: Talos ${{ steps.versions.outputs.talos }} for DGX Spark / GB10 (arm64)
+          body: |
+            Talos Linux ${{ steps.versions.outputs.talos }} (arm64, metal) with the official
+            Sidero Labs system extensions pinned in talos/config/versions.env:
+            nonfree-kmod-nvidia-production, nvidia-container-toolkit-production,
+            realtek-firmware, mellanox-mstflint. Kernel argument: arm64.nobti.
+
+            Installer: ${{ steps.versions.outputs.installer }}
+
+            Not SecureBoot-signed; use the Image Factory schematic for SecureBoot.
+            NVIDIA driver components are subject to the NVIDIA EULA.
