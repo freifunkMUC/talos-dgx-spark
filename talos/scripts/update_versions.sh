@@ -7,7 +7,7 @@
 # (driver branch changes, new extension names, release notes).
 #
 # Usage:
-#   ./talos/scripts/update_versions.sh v1.14.4
+#   ./talos/scripts/update_versions.sh v1.14.6
 #
 # Requires: curl, jq, docker buildx (imagetools inspect).
 
@@ -15,7 +15,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSIONS_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/config/versions.env"
-TALOS_VERSION="${1:?usage: $0 <talos-version, e.g. v1.14.4>}"
+TALOS_VERSION="${1:?usage: $0 <talos-version, e.g. v1.14.6>}"
 FACTORY="${FACTORY:-https://factory.talos.dev}"
 
 digest() {
