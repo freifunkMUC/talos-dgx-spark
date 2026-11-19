@@ -20,9 +20,9 @@ v1.12 (siderolabs/talos#12170). Everything hardware-specific is:
 
 ```bash
 id=$(curl -sSf -X POST --data-binary @talos/config/schematic.yaml https://factory.talos.dev/schematics | jq -r .id)
-echo "https://factory.talos.dev/image/${id}/v1.14.4/metal-arm64.iso"             # SecureBoot off
-echo "https://factory.talos.dev/image/${id}/v1.14.4/metal-arm64-secureboot.iso"  # SecureBoot on
-echo "factory.talos.dev/metal-installer/${id}:v1.14.4"                           # installer
+echo "https://factory.talos.dev/image/${id}/v1.14.6/metal-arm64.iso"             # SecureBoot off
+echo "https://factory.talos.dev/image/${id}/v1.14.6/metal-arm64-secureboot.iso"  # SecureBoot on
+echo "factory.talos.dev/metal-installer/${id}:v1.14.6"                           # installer
 ```
 
 The factory signs SecureBoot assets with the Sidero Labs keys and picks the
@@ -33,7 +33,7 @@ extension versions matching the Talos release.
 ```bash
 ./talos/scripts/build_image.sh installer iso   # -> talos/output/installer-arm64.tar, metal-arm64.iso
 ./talos/scripts/build_image.sh metal           # raw disk image, needs --privileged (handled by the script)
-crane push talos/output/installer-arm64.tar ghcr.io/<org>/installer-dgx-spark:v1.14.4
+crane push talos/output/installer-arm64.tar ghcr.io/<org>/installer-dgx-spark:v1.14.6
 ```
 
 Runs the pinned `ghcr.io/siderolabs/imager` on amd64 or arm64 (no QEMU). The
@@ -43,7 +43,7 @@ installer to `ghcr.io/<owner>/installer-dgx-spark:<talos-version>`.
 ### Updating
 
 ```bash
-./talos/scripts/update_versions.sh v1.14.5   # re-pins imager, installer-base, extensions, talosctl
+./talos/scripts/update_versions.sh v1.14.7   # re-pins imager, installer-base, extensions, talosctl
 git diff talos/config/versions.env
 ```
 
@@ -55,7 +55,7 @@ driver branch changes (`production` vs `lts`).
 
 ```bash
 talosctl gen config <cluster> https://<endpoint>:6443 \
-  --install-image factory.talos.dev/metal-installer/<id>:v1.14.4 \
+  --install-image factory.talos.dev/metal-installer/<id>:v1.14.6 \
   --config-patch @talos/config/gb10-machine-patch.yaml
 ```
 
@@ -78,7 +78,7 @@ with `driver.enabled=false`, `toolkit.enabled=false`,
 | NVMe | `talosctl get disks`: internal NVMe visible; install disk selector matches it. |
 | Ethernet | `talosctl get links`: RTL8127 (`r8169`) link up, no firmware error in `talosctl dmesg \| grep r8169`. |
 | ConnectX-7 | `mlx5_core` probes both QSFP ports; for RoCE add `rdma_ucm`/`ib_umad` (commented in the patch). |
-| GPU | `talosctl read /proc/cmdline` contains `arm64.nobti`; `talosctl read /proc/modules \| grep nvidia`; `talosctl read /proc/driver/nvidia/version` shows 595.91.07 (not "Open Kernel Module"). |
+| GPU | `talosctl read /proc/cmdline` contains `arm64.nobti`; `talosctl read /proc/modules \| grep nvidia`; `talosctl read /proc/driver/nvidia/version` shows 595.112.07 (not "Open Kernel Module"). |
 | CUDA | Pod with `runtimeClassName: nvidia`: `nvidia-smi` shows `NVIDIA GB10`; `nvidia-smi -q` "Addressing Mode" is not `None`; a `cuInit(0)` test returns 0. |
 | Services | `talosctl services`: `ext-nvidia-persistenced` running. |
 | Reboot | Reboot and upgrade once; if kexec reboots hang, add `kexec_load_disabled=1` to the schematic (used in the siderolabs/contrib GB10 example). |
